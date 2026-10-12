@@ -4,46 +4,86 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Block Buster</title>
-  <meta name="description" content="Block Buster is a clean, fast Tetris clone that follows the modern Guideline: 7-bag, SRS rotation, hold, ghost piece, T-spins and back-to-back bonuses.">
-  <meta name="theme-color" content="#0b0d12">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b0d12'/%3E%3Crect x='6' y='6' width='9' height='9' rx='2' fill='%2300f0f0'/%3E%3Crect x='17' y='6' width='9' height='9' rx='2' fill='%23ffd23f'/%3E%3Crect x='6' y='17' width='9' height='9' rx='2' fill='%23a000f0'/%3E%3Crect x='17' y='17' width='9' height='9' rx='2' fill='%23f00000'/%3E%3C/svg%3E">
+  <meta name="description" content="Block Buster is a vivid, fast Tetris clone that follows the modern Guideline: 7-bag, SRS rotation, hold, ghost piece, T-spins and back-to-back bonuses.">
+  <meta name="theme-color" content="#120a2a">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23120a2a'/%3E%3Crect x='6' y='6' width='9' height='9' rx='2.5' fill='%2335f2ff'/%3E%3Crect x='17' y='6' width='9' height='9' rx='2.5' fill='%23ffd23f'/%3E%3Crect x='6' y='17' width='9' height='9' rx='2.5' fill='%23b44dff'/%3E%3Crect x='17' y='17' width='9' height='9' rx='2.5' fill='%23ff4fa3'/%3E%3C/svg%3E">
   <style>
     /* ---------- Colors ---------- */
     :root {
-      --bg: #0b0d12;
-      --field: #0d1017;
-      --surface: #141821;
-      --surface-raised: #1b2130;
-      --line: #252c39;
-      --text: #eef2f8;
-      --muted: #7d8799;
-      --accent: #ffd23f;
-      --accent-ink: #14120a;
+      --bg: #120a2a;
+      --panel: rgba(28, 20, 60, 0.62);
+      --panel-border: rgba(255, 255, 255, 0.1);
+      --text: #f4f1ff;
+      --muted: #a79cd6;
+      --yellow: #ffd23f;
+      --orange: #ff8a00;
+      --pink: #ff4fa3;
+      --cyan: #35f2ff;
+      --green: #6dff9a;
+      --violet: #b44dff;
+      --accent-ink: #1a1000;
     }
 
     /* ---------- Base page ---------- */
     * { box-sizing: border-box; }
     [hidden] { display: none !important; }
-    html, body { margin: 0; min-height: 100%; }
+    html {
+      background: #0d0820;
+      min-height: 100%;
+    }
     body {
-      background: var(--bg);
+      position: relative;
+      min-height: 100vh;
+      margin: 0;
       color: var(--text);
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
       padding: 24px 16px 32px;
+      overflow-x: hidden;
+      background: linear-gradient(165deg, #190d3d 0%, #120a2a 45%, #0a1636 100%);
       -webkit-font-smoothing: antialiased;
       -webkit-tap-highlight-color: transparent;
     }
 
-    .brand h1 {
-      font-size: 15px;
-      font-weight: 800;
-      letter-spacing: 0.34em;
-      margin: 0 0 20px 0.34em;
+    /* Soft colored light blobs drifting behind the game */
+    .blob {
+      position: fixed;
+      z-index: 0;
+      border-radius: 50%;
+      filter: blur(90px);
+      opacity: 0.4;
+      pointer-events: none;
+      animation: drift 24s ease-in-out infinite alternate;
     }
-    .brand span { color: var(--accent); }
+    .blob-1 { width: 46vmax; height: 46vmax; left: -12vmax; top: -10vmax; background: #7b2cff; }
+    .blob-2 { width: 40vmax; height: 40vmax; right: -14vmax; top: 20vh; background: #ff4fa3; animation-duration: 30s; }
+    .blob-3 { width: 36vmax; height: 36vmax; left: 20vw; bottom: -18vmax; background: #35f2ff; opacity: 0.22; animation-duration: 36s; }
+    @keyframes drift {
+      from { transform: translate(0, 0) scale(1); }
+      to   { transform: translate(6vmax, 4vmax) scale(1.12); }
+    }
+
+    .brand, .game, .touch, .help { position: relative; z-index: 1; }
+
+    /* ---------- Title ---------- */
+    .brand h1 {
+      font-size: 17px;
+      font-weight: 900;
+      letter-spacing: 0.34em;
+      margin: 0 0 22px 0.34em;
+      background: linear-gradient(90deg, var(--cyan), var(--yellow), var(--pink), var(--violet), var(--cyan));
+      background-size: 300% 100%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: shimmer 7s linear infinite;
+    }
+    @keyframes shimmer {
+      from { background-position: 0% 50%; }
+      to   { background-position: 300% 50%; }
+    }
 
     /* ---------- Layout: HOLD | board | NEXT and stats ---------- */
     .game {
@@ -58,40 +98,50 @@
     .side { grid-area: side; display: flex; flex-direction: column; gap: 12px; }
 
     .panel {
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: 12px;
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 18px;
       padding: 14px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 12px 34px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
     }
     .label {
       font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.18em;
+      font-weight: 800;
+      letter-spacing: 0.2em;
       color: var(--muted);
       margin: 0 0 10px;
     }
     .stat + .stat { margin-top: 14px; }
     .stat-value {
       display: inline-block;
-      font-size: 24px;
-      font-weight: 700;
+      font-size: 26px;
+      font-weight: 900;
       margin: 0;
       font-variant-numeric: tabular-nums;
       transform-origin: left center;
     }
+    .stat-value.score { background: linear-gradient(180deg, #fff6c2, var(--yellow) 50%, var(--orange)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .stat-value.level { color: var(--cyan); text-shadow: 0 0 14px rgba(53, 242, 255, 0.5); }
+    .stat-value.lines { color: var(--green); text-shadow: 0 0 14px rgba(109, 255, 154, 0.4); }
+    .stat-value.best  { color: var(--pink); text-shadow: 0 0 14px rgba(255, 79, 163, 0.5); }
+
     .progress {
-      height: 4px;
-      margin-top: 8px;
-      border-radius: 2px;
-      background: var(--line);
+      height: 6px;
+      margin-top: 9px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.08);
       overflow: hidden;
     }
     .progress span {
       display: block;
       height: 100%;
       width: 0;
-      background: var(--accent);
-      transition: width 0.3s ease;
+      border-radius: 3px;
+      background: linear-gradient(90deg, var(--cyan), var(--violet), var(--pink));
+      box-shadow: 0 0 10px rgba(180, 77, 255, 0.7);
+      transition: width 0.35s ease;
     }
 
     /* ---------- Playfield and previews ---------- */
@@ -99,9 +149,10 @@
       display: block;
       height: min(78vh, 640px);
       width: auto;
-      background: var(--field);
-      border: 1px solid var(--line);
-      border-radius: 10px;
+      background: #0b0720;
+      border: 1px solid rgba(180, 150, 255, 0.22);
+      border-radius: 16px;
+      box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.03), 0 20px 60px rgba(0, 0, 0, 0.5);
     }
     #holdCanvas, #nextCanvas {
       display: block;
@@ -110,7 +161,17 @@
     #holdCanvas { width: 120px; height: 90px; }
     #nextCanvas { width: 120px; height: 320px; }
 
-    /* Big "BUST!" callout that pops over the playfield */
+    /* Flash of color over the board, used on big busts */
+    .screen-flash {
+      position: absolute;
+      inset: 0;
+      border-radius: 16px;
+      opacity: 0;
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+
+    /* Big BUST callout that pops over the playfield */
     .callout {
       position: absolute;
       left: 50%;
@@ -123,19 +184,49 @@
       pointer-events: none;
     }
     .callout-main {
-      font-size: 30px;
+      font-size: 38px;
       font-weight: 900;
-      letter-spacing: 0.04em;
+      font-style: italic;
+      letter-spacing: 0.03em;
       margin: 0;
-      text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+      background: linear-gradient(180deg, #ffffff 0%, var(--yellow) 48%, var(--orange) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 4px 0 #6b2100) drop-shadow(0 0 18px rgba(255, 170, 40, 0.7));
     }
     .callout-sub {
-      font-size: 12px;
-      font-weight: 700;
+      font-size: 13px;
+      font-weight: 800;
       letter-spacing: 0.14em;
       text-transform: uppercase;
-      color: var(--accent);
-      margin: 8px 0 0;
+      color: #fff;
+      margin: 10px 0 0;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+    }
+    .callout.tetris .callout-main {
+      background: linear-gradient(180deg, #ffffff 0%, #ffb3e6 35%, var(--pink) 70%, var(--violet) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      filter: drop-shadow(0 4px 0 #3a0b4a) drop-shadow(0 0 22px rgba(255, 79, 163, 0.85));
+    }
+    .callout.tspin .callout-main {
+      background: linear-gradient(180deg, #ffffff 0%, var(--cyan) 50%, var(--violet) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      filter: drop-shadow(0 4px 0 #1d0b4a) drop-shadow(0 0 22px rgba(53, 242, 255, 0.8));
+    }
+    .callout.triple .callout-main {
+      background: linear-gradient(180deg, #ffffff 0%, var(--cyan) 60%, #2d7dff 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      filter: drop-shadow(0 4px 0 #062c4a) drop-shadow(0 0 18px rgba(53, 242, 255, 0.7));
+    }
+    .callout.double .callout-main {
+      background: linear-gradient(180deg, #ffffff 0%, var(--green) 60%, #1fc96a 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      filter: drop-shadow(0 4px 0 #0a3a1c) drop-shadow(0 0 18px rgba(109, 255, 154, 0.7));
     }
 
     /* Start, pause and game-over card drawn over the playfield */
@@ -146,9 +237,11 @@
       align-items: center;
       justify-content: center;
       padding: 16px;
-      background: rgba(11, 13, 18, 0.86);
-      border-radius: 10px;
-      transition: opacity 0.25s ease, visibility 0.25s;
+      background: rgba(12, 7, 32, 0.72);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      border-radius: 16px;
+      transition: opacity 0.3s ease, visibility 0.3s;
     }
     .overlay.hidden {
       opacity: 0;
@@ -157,38 +250,47 @@
     }
     .overlay-card { text-align: center; max-width: 280px; }
     .overlay-title {
-      font-size: 28px;
+      font-size: 34px;
       font-weight: 900;
-      letter-spacing: 0.12em;
+      font-style: italic;
+      letter-spacing: 0.04em;
       margin: 0 0 10px;
+      background: linear-gradient(180deg, #ffffff, var(--yellow) 55%, var(--orange));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 4px 0 #6b2100);
     }
-    .overlay-title span { color: var(--accent); }
     .overlay-text {
-      font-size: 15px;
-      margin: 0 0 18px;
-      opacity: 0.9;
+      font-size: 16px;
+      margin: 0 0 20px;
+      opacity: 0.92;
     }
     .overlay-hint {
       font-size: 12px;
       color: var(--muted);
-      margin: 16px 0 0;
+      margin: 18px 0 0;
     }
     .btn-primary {
       font: inherit;
-      font-size: 15px;
-      font-weight: 800;
-      letter-spacing: 0.08em;
+      font-size: 16px;
+      font-weight: 900;
+      letter-spacing: 0.06em;
       color: var(--accent-ink);
-      background: var(--accent);
+      background: linear-gradient(180deg, #fff09a, var(--yellow) 50%, var(--orange));
       border: 0;
-      border-radius: 10px;
-      padding: 12px 30px;
+      border-radius: 14px;
+      padding: 13px 34px;
       cursor: pointer;
-      transition: transform 0.12s ease, filter 0.12s ease;
+      box-shadow: 0 6px 0 #a8500a, 0 12px 26px rgba(255, 160, 40, 0.35);
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
     }
-    .btn-primary:hover { filter: brightness(1.06); }
-    .btn-primary:active { transform: scale(0.97); }
-    .btn-primary:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+    .btn-primary:hover { transform: translateY(-1px); }
+    .btn-primary:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 #a8500a, 0 6px 14px rgba(255, 160, 40, 0.3);
+    }
+    .btn-primary:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
 
     /* ---------- Controls help (wide screens) ---------- */
     .help {
@@ -205,22 +307,27 @@
     .touch button {
       font: inherit;
       font-size: 14px;
-      font-weight: 600;
-      color: var(--text);
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: 10px;
+      font-weight: 800;
+      color: #fff;
+      background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0) 50%), rgba(70, 56, 130, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 14px;
       padding: 14px 0;
+      box-shadow: 0 5px 0 rgba(0, 0, 0, 0.35);
       touch-action: manipulation;
       user-select: none;
       -webkit-user-select: none;
       -webkit-touch-callout: none;
-      transition: transform 0.08s ease, background 0.08s ease;
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
     }
     .touch button:active {
-      background: var(--surface-raised);
-      transform: scale(0.96);
+      transform: translateY(3px);
+      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
     }
+    .touch [data-action="left"], .touch [data-action="right"], .touch [data-action="down"] { background-color: rgba(53, 130, 220, 0.9); }
+    .touch [data-action="rotateCW"], .touch [data-action="rotateCCW"] { background-color: rgba(190, 70, 170, 0.9); }
+    .touch [data-action="hardDrop"] { background-color: rgba(230, 160, 20, 0.95); color: #1a1000; }
+    .touch [data-action="hold"] { background-color: rgba(120, 70, 230, 0.9); }
 
     /* ---------- Small screens (below 600 px wide) ---------- */
     @media (max-width: 599px) {
@@ -236,15 +343,15 @@
         max-width: 420px;
       }
       #board { height: min(64vh, 640px); }
-      .callout-main { font-size: 22px; }
-      .overlay-title { font-size: 24px; }
+      .callout-main { font-size: 26px; }
+      .overlay-title { font-size: 28px; }
       .touch {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 8px;
+        gap: 10px;
         width: 100%;
         max-width: 420px;
-        margin-top: 14px;
+        margin-top: 16px;
       }
     }
 
@@ -255,12 +362,17 @@
     /* Respect users who ask for less motion */
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { transition: none !important; }
+      .blob, .brand h1 { animation: none !important; }
     }
   </style>
 </head>
 <body>
+  <div class="blob blob-1" aria-hidden="true"></div>
+  <div class="blob blob-2" aria-hidden="true"></div>
+  <div class="blob blob-3" aria-hidden="true"></div>
+
   <header class="brand">
-    <h1>BLOCK <span>BUSTER</span></h1>
+    <h1>BLOCK BUSTER</h1>
   </header>
 
   <main class="game">
@@ -273,6 +385,7 @@
     <!-- Playfield, callouts and overlay cards -->
     <section class="board-wrap">
       <canvas id="board" width="300" height="600"></canvas>
+      <div id="screenFlash" class="screen-flash"></div>
       <div id="callout" class="callout" aria-live="polite">
         <p id="calloutMain" class="callout-main"></p>
         <p id="calloutSub" class="callout-sub"></p>
@@ -298,20 +411,20 @@
       <section class="panel stats-panel">
         <div class="stat">
           <h2 class="label">SCORE</h2>
-          <p id="score" class="stat-value">0</p>
+          <p id="score" class="stat-value score">0</p>
         </div>
         <div class="stat">
           <h2 class="label">LEVEL</h2>
-          <p id="level" class="stat-value">1</p>
+          <p id="level" class="stat-value level">1</p>
           <div class="progress"><span id="levelBar"></span></div>
         </div>
         <div class="stat">
           <h2 class="label">LINES</h2>
-          <p id="lines" class="stat-value">0</p>
+          <p id="lines" class="stat-value lines">0</p>
         </div>
         <div class="stat">
           <h2 class="label">BEST</h2>
-          <p id="best" class="stat-value">0</p>
+          <p id="best" class="stat-value best">0</p>
         </div>
       </section>
     </div>
@@ -372,31 +485,36 @@
     const CLEAR_FLASH_TIME = 0.25;   // how long cleared rows flash before they disappear
     const LOCK_PULSE_TIME = 0.2;     // white flash on blocks as they lock
     const SHAKE_TIME = 0.35;         // how long the screen shakes after a bust
+    const POPUP_TIME = 0.9;          // how long a floating score number lasts
+
+    // Helper tuning. The helper is strongest at score 0 and is gone by this score.
+    const ASSIST_FADE_SCORE = 10000;
 
     // Animation tuning.
     const VISUAL_SMOOTHING = 26;     // higher = the falling piece catches up to its real spot faster
     const PARTICLE_GRAVITY = 900;    // pixels per second squared
-    const MAX_PARTICLES = 260;
+    const MAX_PARTICLES = 320;
     const GAME_OVER_ROWS_PER_SECOND = 18;
     const SHAKE_BY_CLEAR = [0, 1.5, 3, 4.5, 7];  // shake strength for 0-4 rows cleared
+    const SPRITE_PX = 96;            // resolution of the glossy block pictures
 
     // Respect the operating system's "reduce motion" setting: no shake, particles or sliding.
     const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    // Colors. The seven piece colors are the standard Guideline colors.
+    // Colors. The seven piece colors keep the standard Guideline hues, made brighter for the glossy look.
     const COLORS = {
-      I: '#00f0f0',
-      O: '#f0f000',
-      T: '#a000f0',
-      S: '#00f000',
-      Z: '#f00000',
-      J: '#0000f0',
-      L: '#f0a000',
+      I: '#22f0ff',
+      O: '#ffe226',
+      T: '#b04dff',
+      S: '#3dff5f',
+      Z: '#ff3350',
+      J: '#3d6bff',
+      L: '#ff9a1f',
     };
-    const COLOR_FIELD = '#0d1017';
-    const COLOR_GRID = '#171c26';
-    const COLOR_FLASH = 'rgba(255, 255, 255, 0.55)';
-    const COLOR_DEAD = '#2a3140';    // grey blocks that fill the board on game over
+    const COLOR_FIELD = '#0b0720';
+    const COLOR_GRID = 'rgba(170, 150, 255, 0.1)';
+    const COLOR_FLASH = 'rgba(255, 255, 255, 0.45)';
+    const COLOR_DEAD = '#343c58';    // grey blocks that fill the board on game over
 
     const PIECE_NAMES = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
     const CLEAR_NAMES = ['', 'SINGLE', 'DOUBLE', 'TRIPLE', 'TETRIS'];
@@ -511,7 +629,7 @@
     let best = 0;
     let bestAtStart = 0;       // the best score when this game began (for "New best!")
     let lastClearWasHard = false; // was the previous line clear a Tetris or T-spin? (for back-to-back)
-    let state = 'ready';       // 'ready' (title card), 'playing', 'paused', or 'over'
+    let state = 'playing';     // 'playing', 'paused', or 'over'
     let flashRows = [];        // rows currently flashing after a line clear
     let flashTimer = 0;
     let gravityTimer = 0;
@@ -528,7 +646,8 @@
 
     // Visual-only state (animations). None of this affects the rules.
     let visual = { x: SPAWN_X, y: SPAWN_Y };   // smoothed on-screen spot of the falling piece
-    let particles = [];        // small squares that burst out of cleared rows
+    let particles = [];        // sparks that burst out of cleared rows
+    let popups = [];           // floating score numbers
     let pulses = [];           // white flashes on blocks that just locked
     let shake = { time: 0, duration: SHAKE_TIME, amount: 0 };
     let overProgress = 0;      // rows of grey filled in during the game-over animation
@@ -550,6 +669,7 @@
     const calloutEl = document.getElementById('callout');
     const calloutMain = document.getElementById('calloutMain');
     const calloutSub = document.getElementById('calloutSub');
+    const screenFlashEl = document.getElementById('screenFlash');
     const overlayEl = document.getElementById('overlay');
     const overlayTitle = document.getElementById('overlayTitle');
     const overlayText = document.getElementById('overlayText');
@@ -582,13 +702,18 @@
       }));
     }
 
-    // Return true if the piece fits: inside the walls and floor, and not overlapping any block.
-    function fits(piece) {
+    // Return true if the piece fits on the given grid: inside the walls and floor, and not overlapping any block.
+    function fitsOn(grid, piece) {
       return getCells(piece).every((cell) =>
         cell.x >= 0 && cell.x < COLS &&
         cell.y >= 0 && cell.y < ROWS &&
-        board[cell.y][cell.x] === null
+        grid[cell.y][cell.x] === null
       );
+    }
+
+    // Return true if the piece fits on the real board.
+    function fits(piece) {
+      return fitsOn(board, piece);
     }
 
     // A spot counts as blocked if it is a wall, the floor, or a locked block. Used for T-spin checks.
@@ -612,7 +737,7 @@
     }
 
     // ============================================================
-    // 4. RANDOMIZER (7-BAG)
+    // 4. RANDOMIZER (7-BAG) AND THE HELPER
     // ============================================================
 
     // Shuffle an array in place (Fisher-Yates).
@@ -624,12 +749,96 @@
       return items;
     }
 
-    // Take one piece from the bag. When the bag is empty, shuffle all 7 pieces into a new bag.
+    // How strong the helper is, from 1 (score 0) down to 0 (score ASSIST_FADE_SCORE).
+    // The squared curve keeps the help generous early and fades it out gently.
+    function assistStrength(currentScore) {
+      const progress = Math.min(1, currentScore / ASSIST_FADE_SCORE);
+      return (1 - progress) * (1 - progress);
+    }
+
+    // Take one piece from the bag.
+    // Sometimes (more often early on) the helper looks at the pieces left in the bag
+    // and takes the one that fits the board best. It only changes the order inside
+    // the bag, so every bag of 7 still contains each piece exactly once.
     function takeFromBag() {
       if (pieceBag.length === 0) {
         pieceBag = shuffle([...PIECE_NAMES]);
       }
+      if (Math.random() < assistStrength(score)) {
+        let bestIndex = pieceBag.length - 1;
+        let bestFit = -Infinity;
+        pieceBag.forEach((type, index) => {
+          const fit = bestPlacementScore(type);
+          if (fit > bestFit) {
+            bestFit = fit;
+            bestIndex = index;
+          }
+        });
+        return pieceBag.splice(bestIndex, 1)[0];
+      }
       return pieceBag.pop();
+    }
+
+    // Find the best score any placement of this piece gets on the current board.
+    // Tries every rotation and column, drops the piece, and rates the result.
+    function bestPlacementScore(type) {
+      let bestFit = -Infinity;
+      for (let rot = 0; rot < 4; rot++) {
+        for (let x = -2; x < COLS + 2; x++) {
+          const piece = { type, rot, x, y: SPAWN_Y };
+          if (!fitsOn(board, piece)) continue;
+          while (fitsOn(board, { ...piece, y: piece.y + 1 })) {
+            piece.y++;
+          }
+          const grid = board.map((row) => row.slice());
+          for (const cell of getCells(piece)) {
+            grid[cell.y][cell.x] = type;
+          }
+          bestFit = Math.max(bestFit, scoreGrid(grid));
+        }
+      }
+      return bestFit;
+    }
+
+    // Rate a board: reward cleared lines, penalize height, holes and bumpiness.
+    // These weights are the well-known Dellacherie values.
+    function scoreGrid(grid) {
+      // Remove full rows and count them.
+      let cleared = 0;
+      const kept = grid.filter((row) => {
+        const full = row.every((cell) => cell !== null);
+        if (full) cleared++;
+        return !full;
+      });
+      while (kept.length < ROWS) {
+        kept.unshift(makeEmptyRow());
+      }
+
+      // Column heights, and their total.
+      const heights = [];
+      for (let col = 0; col < COLS; col++) {
+        const topRow = kept.findIndex((row) => row[col] !== null);
+        heights.push(topRow === -1 ? 0 : ROWS - topRow);
+      }
+      const totalHeight = heights.reduce((sum, h) => sum + h, 0);
+
+      // Holes: empty cells with a block somewhere above them in the same column.
+      let holes = 0;
+      for (let col = 0; col < COLS; col++) {
+        let blockSeen = false;
+        for (let row = 0; row < ROWS; row++) {
+          if (kept[row][col] !== null) blockSeen = true;
+          else if (blockSeen) holes++;
+        }
+      }
+
+      // Bumpiness: how uneven the top of the stack is.
+      let bumpiness = 0;
+      for (let col = 0; col < COLS - 1; col++) {
+        bumpiness += Math.abs(heights[col] - heights[col + 1]);
+      }
+
+      return -0.51 * totalHeight + 0.76 * cleared - 0.36 * holes - 0.18 * bumpiness;
     }
 
     // Keep the NEXT queue full so the preview always has enough pieces.
@@ -849,6 +1058,10 @@
       }
       current.y += distance;
       addScore(distance * 2);
+      if (distance >= 3 && !REDUCED_MOTION) {
+        const landedRow = current.y - BUFFER_ROWS;
+        addPopup(`+${distance * 2}`, (current.x + 1.5) * CELL, (landedRow + 0.5) * CELL, '#ffffff');
+      }
       lockPiece();
     }
 
@@ -899,12 +1112,13 @@
         flashRows = fullRows;
         flashTimer = CLEAR_FLASH_TIME;
         spawnClearBurst(fullRows);
-        celebrateClear(award);
+        celebrateClear(award, fullRows);
       } else {
         if (tSpin) {
           const points = 400 * level; // T-spin with no lines cleared
           addScore(points);
-          showCallout('T-SPIN', `+${points}`);
+          showCallout('T-SPIN', `+${points}`, 'tspin');
+          flashScreen('#35f2ff', 0.35);
         }
         spawnPiece();
       }
@@ -975,6 +1189,7 @@
       moveDir = 0;
       softDropping = false;
       particles = [];
+      popups = [];
       pulses = [];
       shake.amount = 0;
       shake.time = shake.duration;
@@ -1042,11 +1257,6 @@
 
     // Start an action. Left, right and down keep going while held; the others happen once.
     function pressAction(action) {
-      // Title card: any start key begins a game.
-      if (state === 'ready') {
-        if (['start', 'confirm', 'hardDrop', 'restart'].includes(action)) resetGame();
-        return;
-      }
       // Game over: only explicit restart keys work, so a stray Space does not wipe the score.
       if (state === 'over') {
         if (action === 'confirm' || action === 'restart') resetGame();
@@ -1125,14 +1335,14 @@
       button.addEventListener('contextmenu', (event) => event.preventDefault());
     });
 
-    // The card's button (Play, Resume, Play again). Blur afterwards so Space cannot press it again.
+    // The card's button (Resume, Play again). Blur afterwards so Space cannot press it again.
     overlayButton.addEventListener('click', () => {
       overlayButton.blur();
       if (overlayAction) pressAction(overlayAction);
     });
 
     // ============================================================
-    // 13. ANIMATION: SMOOTH MOTION, PARTICLES, SHAKE, CALLOUTS
+    // 13. ANIMATION: SMOOTH MOTION, SPARKS, GLOW, SHAKE, CALLOUTS
     // ============================================================
 
     // Ease the falling piece toward its real position so sideways moves and drops glide.
@@ -1149,7 +1359,7 @@
       if (Math.abs(current.y - visual.y) < 0.01) visual.y = current.y;
     }
 
-    // Advance particles, lock pulses, screen shake and the game-over fill.
+    // Advance sparks, score numbers, lock pulses, screen shake and the game-over fill.
     // This runs in real time, so the effects keep playing during the flash.
     function updateEffects(dt) {
       shake.time += dt;
@@ -1161,6 +1371,12 @@
         p.life -= dt;
       }
       particles = particles.filter((p) => p.life > 0);
+
+      for (const popup of popups) {
+        popup.y -= 42 * dt;
+        popup.life -= dt;
+      }
+      popups = popups.filter((popup) => popup.life > 0);
 
       for (const pulse of pulses) {
         pulse.life -= dt;
@@ -1202,24 +1418,24 @@
       }
     }
 
-    // Make one particle at (x, y) that flies outward and fades.
+    // Make one spark at (x, y) that flies outward and fades.
     function makeParticle(x, y, color) {
       const angle = Math.random() * Math.PI * 2;
-      const speed = 90 + Math.random() * 220;
-      const life = 0.45 + Math.random() * 0.4;
+      const speed = 90 + Math.random() * 260;
+      const life = 0.45 + Math.random() * 0.45;
       return {
         x,
         y,
         vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - 60,
+        vy: Math.sin(angle) * speed - 80,
         life,
         maxLife: life,
         color,
-        size: 3 + Math.random() * 3,
+        size: 3 + Math.random() * 4,
       };
     }
 
-    // Burst particles from every block in the cleared rows (two per block, capped overall).
+    // Burst sparks from every block in the cleared rows (two per block, capped overall).
     function spawnClearBurst(rows) {
       if (REDUCED_MOTION) return;
       for (const row of rows) {
@@ -1236,18 +1452,43 @@
       }
     }
 
-    // Show the big "BUST!" text, shake the screen, and buzz on phones for a line clear.
-    function celebrateClear(award) {
+    // Add a floating score number at (x, y) in logical board pixels.
+    function addPopup(text, x, y, color) {
+      if (REDUCED_MOTION) return;
+      popups.push({ text, x, y, color, life: POPUP_TIME, maxLife: POPUP_TIME });
+    }
+
+    // Show the big BUST text, shake the screen, glow the board, and buzz on phones for a line clear.
+    function celebrateClear(award, rows) {
       let main = 'BUST!';
-      if (award.tSpin) main = 'T-SPIN BUST!';
-      else if (award.count === 4) main = 'TETRIS BUST!';
-      else if (award.count === 3) main = 'TRIPLE BUST!';
-      else if (award.count === 2) main = 'DOUBLE BUST!';
+      let kind = 'single';
+      if (award.tSpin) {
+        main = 'T-SPIN BUST!';
+        kind = 'tspin';
+      } else if (award.count === 4) {
+        main = 'TETRIS BUST!';
+        kind = 'tetris';
+      } else if (award.count === 3) {
+        main = 'TRIPLE BUST!';
+        kind = 'triple';
+      } else if (award.count === 2) {
+        main = 'DOUBLE BUST!';
+        kind = 'double';
+      }
 
       const parts = [`+${award.points}`];
       if (award.backToBack) parts.push('Back-to-back');
       if (award.leveledUp) parts.push(`Level ${award.levelNow}`);
-      showCallout(main, parts.join('  ·  '));
+      showCallout(main, parts.join('  ·  '), kind);
+
+      // Score number at the middle of the cleared rows.
+      const visibleRows = rows.filter((row) => row >= BUFFER_ROWS).map((row) => row - BUFFER_ROWS);
+      const middleRow = visibleRows.length ? visibleRows.reduce((a, b) => a + b, 0) / visibleRows.length : 0;
+      addPopup(`+${award.points}`, BOARD_W / 2, (middleRow + 0.5) * CELL, '#ffe26b');
+
+      const glow = { tetris: '#ff4fa3', tspin: '#35f2ff', triple: '#35f2ff', double: '#6dff9a', single: '#ffd23f' }[kind];
+      flashScreen(glow, award.count === 4 || award.tSpin ? 0.5 : 0.22);
+      pulseBoard(glow);
 
       startShake(SHAKE_BY_CLEAR[award.count]);
       if (navigator.vibrate) {
@@ -1255,8 +1496,9 @@
       }
     }
 
-    // Show the callout text with a quick pop-in, hold, then fade out.
-    function showCallout(main, sub) {
+    // Show the callout text with a bouncy pop-in, hold, then fade out. kind picks its colors.
+    function showCallout(main, sub, kind = 'single') {
+      calloutEl.className = `callout ${kind}`;
       calloutMain.textContent = main;
       calloutSub.textContent = sub;
       if (REDUCED_MOTION) {
@@ -1266,11 +1508,13 @@
         return;
       }
       calloutEl.animate([
-        { opacity: 0, transform: 'translate(-50%, -50%) scale(1.45)' },
-        { opacity: 1, transform: 'translate(-50%, -50%) scale(1)', offset: 0.16 },
-        { opacity: 1, transform: 'translate(-50%, -50%) scale(1)', offset: 0.7 },
-        { opacity: 0, transform: 'translate(-50%, -62%) scale(1)' },
-      ], { duration: 1200, easing: 'ease-out' });
+        { opacity: 0, transform: 'translate(-50%, -50%) scale(0.5)' },
+        { opacity: 1, transform: 'translate(-50%, -50%) scale(1.12)', offset: 0.22 },
+        { opacity: 1, transform: 'translate(-50%, -50%) scale(0.98)', offset: 0.34 },
+        { opacity: 1, transform: 'translate(-50%, -50%) scale(1)', offset: 0.42 },
+        { opacity: 1, transform: 'translate(-50%, -50%) scale(1)', offset: 0.72 },
+        { opacity: 0, transform: 'translate(-50%, -64%) scale(1)' },
+      ], { duration: 1300, easing: 'ease-out' });
     }
 
     // Hide the callout straight away (used when a new game starts).
@@ -1279,15 +1523,35 @@
       calloutEl.style.opacity = '0';
     }
 
+    // Flash a soft colored light over the whole board. strength is 0 to 1.
+    function flashScreen(color, strength) {
+      if (REDUCED_MOTION) return;
+      screenFlashEl.style.background = `radial-gradient(circle at 50% 40%, ${color} 0%, transparent 70%)`;
+      screenFlashEl.animate([
+        { opacity: strength },
+        { opacity: 0 },
+      ], { duration: 520, easing: 'ease-out' });
+    }
+
+    // Make the board's edge glow in a color for a moment.
+    function pulseBoard(color) {
+      if (REDUCED_MOTION) return;
+      boardCanvas.animate([
+        { boxShadow: '0 0 0 6px rgba(255,255,255,0.03), 0 20px 60px rgba(0,0,0,0.5)' },
+        { boxShadow: `0 0 0 6px ${color}55, 0 0 60px 10px ${color}aa, 0 20px 60px rgba(0,0,0,0.5)` },
+        { boxShadow: '0 0 0 6px rgba(255,255,255,0.03), 0 20px 60px rgba(0,0,0,0.5)' },
+      ], { duration: 800, easing: 'ease-out' });
+    }
+
     // Briefly bump a number when it changes.
     function popElement(el, text) {
       const hadValue = el.textContent !== '';
       el.textContent = text;
       if (hadValue && !REDUCED_MOTION) {
         el.animate([
-          { transform: 'scale(1.22)' },
+          { transform: 'scale(1.25)' },
           { transform: 'scale(1)' },
-        ], { duration: 240, easing: 'ease-out' });
+        ], { duration: 260, easing: 'ease-out' });
       }
     }
 
@@ -1313,15 +1577,66 @@
       nextCtx = fitCanvas(nextCanvas, NEXT_W, NEXT_H);
     }
 
-    // Draw one tile: a flat color with a thin light top edge and a dark bottom edge.
+    // Mix a color toward white (target 255) or black (target 0). amount is 0 to 1.
+    function mixColor(hex, target, amount) {
+      const n = parseInt(hex.slice(1), 16);
+      const parts = [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+        .map((v) => Math.round(v + (target - v) * amount));
+      return `rgb(${parts[0]}, ${parts[1]}, ${parts[2]})`;
+    }
+
+    // Draw a rounded rectangle path (works in every browser).
+    function traceRoundRect(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
+    // Glossy block pictures are drawn once per color and reused: a bright top, a rich body,
+    // a darker base, and a soft gloss highlight.
+    const spriteCache = {};
+    function getBlockSprite(color) {
+      if (spriteCache[color]) return spriteCache[color];
+
+      const sprite = document.createElement('canvas');
+      sprite.width = SPRITE_PX;
+      sprite.height = SPRITE_PX;
+      const g = sprite.getContext('2d');
+      const pad = SPRITE_PX * 0.04;
+      const size = SPRITE_PX - pad * 2;
+      const radius = SPRITE_PX * 0.16;
+
+      const body = g.createLinearGradient(0, pad, 0, pad + size);
+      body.addColorStop(0, mixColor(color, 255, 0.45));
+      body.addColorStop(0.45, color);
+      body.addColorStop(1, mixColor(color, 0, 0.38));
+      traceRoundRect(g, pad, pad, size, size, radius);
+      g.fillStyle = body;
+      g.fill();
+
+      const gloss = g.createLinearGradient(0, pad, 0, pad + size * 0.5);
+      gloss.addColorStop(0, 'rgba(255, 255, 255, 0.6)');
+      gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      traceRoundRect(g, pad + SPRITE_PX * 0.07, pad + SPRITE_PX * 0.07, size - SPRITE_PX * 0.14, size * 0.4, radius * 0.6);
+      g.fillStyle = gloss;
+      g.fill();
+
+      traceRoundRect(g, pad + 1, pad + 1, size - 2, size - 2, radius);
+      g.strokeStyle = 'rgba(0, 0, 0, 0.28)';
+      g.lineWidth = 2;
+      g.stroke();
+
+      spriteCache[color] = sprite;
+      return sprite;
+    }
+
+    // Draw one glossy tile at (x, y) with the given size.
     function drawTile(ctx, x, y, size, color) {
-      const edge = Math.max(2, Math.round(size * 0.1));
-      ctx.fillStyle = color;
-      ctx.fillRect(x + 1, y + 1, size - 2, size - 2);
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-      ctx.fillRect(x + 1, y + 1, size - 2, edge);
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
-      ctx.fillRect(x + 1, y + size - 1 - edge, size - 2, edge);
+      ctx.drawImage(getBlockSprite(color), x, y, size, size);
     }
 
     // Draw one block on the playfield. visibleRow counts from the top of the visible area.
@@ -1347,22 +1662,21 @@
       ctx.stroke();
     }
 
-    // Draw a faint outline where the current piece would land.
+    // Draw a soft glowing outline where the current piece would land.
     function drawGhost(ctx) {
       const landY = ghostY();
       ctx.strokeStyle = COLORS[current.type];
-      ctx.globalAlpha = 0.45;
+      ctx.shadowColor = COLORS[current.type];
+      ctx.shadowBlur = 10;
+      ctx.globalAlpha = 0.6;
       ctx.lineWidth = 2;
       for (const cell of getCells({ ...current, y: landY })) {
         if (cell.y < BUFFER_ROWS) continue;
-        ctx.strokeRect(
-          cell.x * CELL + 2,
-          (cell.y - BUFFER_ROWS) * CELL + 2,
-          CELL - 4,
-          CELL - 4
-        );
+        traceRoundRect(ctx, cell.x * CELL + 3, (cell.y - BUFFER_ROWS) * CELL + 3, CELL - 6, CELL - 6, 6);
+        ctx.stroke();
       }
       ctx.globalAlpha = 1;
+      ctx.shadowBlur = 0;
     }
 
     // Draw the falling piece at its smoothed position.
@@ -1374,32 +1688,63 @@
       }
     }
 
-    // Draw a light wash over the rows that are about to be removed.
+    // Draw the cleared rows: a white wash plus a light beam that sweeps across them.
     function drawFlashRows(ctx) {
-      ctx.fillStyle = COLOR_FLASH;
+      if (flashRows.length === 0) return;
+      const progress = Math.min(1, Math.max(0, 1 - flashTimer / CLEAR_FLASH_TIME));
+      const beamX = progress * (BOARD_W + 160) - 80;
       for (const row of flashRows) {
         if (row < BUFFER_ROWS) continue;
-        ctx.fillRect(0, (row - BUFFER_ROWS) * CELL, BOARD_W, CELL);
+        const y = (row - BUFFER_ROWS) * CELL;
+        ctx.fillStyle = COLOR_FLASH;
+        ctx.fillRect(0, y, BOARD_W, CELL);
+        const beam = ctx.createLinearGradient(beamX - 80, 0, beamX + 80, 0);
+        beam.addColorStop(0, 'rgba(255, 255, 255, 0)');
+        beam.addColorStop(0.5, 'rgba(255, 255, 255, 0.95)');
+        beam.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = beam;
+        ctx.fillRect(0, y, BOARD_W, CELL);
       }
     }
 
     // Draw the fading white flashes on freshly locked blocks.
     function drawPulses(ctx) {
       for (const pulse of pulses) {
-        const alpha = 0.5 * (pulse.life / LOCK_PULSE_TIME);
+        const alpha = 0.55 * (pulse.life / LOCK_PULSE_TIME);
         ctx.fillStyle = `rgba(255, 255, 255, ${alpha.toFixed(3)})`;
-        ctx.fillRect(pulse.col * CELL + 1, pulse.visibleRow * CELL + 1, CELL - 2, CELL - 2);
+        ctx.fillRect(pulse.col * CELL, pulse.visibleRow * CELL, CELL, CELL);
       }
     }
 
-    // Draw the particles from cleared rows.
+    // Draw the sparks from cleared rows. They glow by adding their light together.
     function drawParticles(ctx) {
+      ctx.globalCompositeOperation = 'lighter';
       for (const p of particles) {
         const alpha = Math.max(0, p.life / p.maxLife);
-        const size = p.size * (0.4 + 0.6 * alpha);
         ctx.globalAlpha = alpha;
         ctx.fillStyle = p.color;
-        ctx.fillRect(p.x - size / 2, p.y - size / 2, size, size);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * (0.5 + 0.5 * alpha), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    // Draw the floating score numbers. They rise, grow a little, and fade.
+    function drawPopups(ctx) {
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = '900 20px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+      ctx.lineJoin = 'round';
+      for (const popup of popups) {
+        const t = popup.life / popup.maxLife;
+        ctx.globalAlpha = Math.min(1, t * 2.5);
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = 'rgba(14, 6, 36, 0.85)';
+        ctx.strokeText(popup.text, popup.x, popup.y);
+        ctx.fillStyle = popup.color;
+        ctx.fillText(popup.text, popup.x, popup.y);
       }
       ctx.globalAlpha = 1;
     }
@@ -1444,6 +1789,7 @@
         drawFallingPiece(ctx);
       }
       drawParticles(ctx);
+      drawPopups(ctx);
       ctx.restore();
     }
 
@@ -1505,14 +1851,12 @@
     }
 
     // ============================================================
-    // 15. OVERLAY CARDS (title, pause, game over)
+    // 15. OVERLAY CARDS (pause, game over)
     // ============================================================
 
     // Show the card that matches the current state, or hide it while playing.
     function refreshOverlay() {
-      if (state === 'ready') {
-        showOverlay('BLOCK BUSTER', 'Clear lines. Make a bust.', 'Press Enter or Space to start', 'Play', 'start');
-      } else if (state === 'paused') {
+      if (state === 'paused') {
         showOverlay('PAUSED', 'Take a breather.', 'Press P or Esc to resume', 'Resume', 'pause');
       } else if (state === 'over' && overProgress >= VISIBLE_ROWS) {
         const isNewBest = score > 0 && score > bestAtStart;
@@ -1579,14 +1923,13 @@
     }
 
     // ============================================================
-    // 17. START
+    // 17. START (the game begins straight away, no title screen)
     // ============================================================
 
     best = loadBest();
     layoutCanvases();
     window.addEventListener('resize', layoutCanvases);
-    prepareNewGame();
-    refreshOverlay();   // shows the title card; the board waits for the player
+    resetGame();
     requestAnimationFrame(gameLoop);
   </script>
 </body>

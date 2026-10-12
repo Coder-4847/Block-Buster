@@ -284,6 +284,63 @@ function record(name, ok, detail = '') {
       JSON.stringify(r));
   }
 
+  // Helper strength fades from 1 at score 0 to 0 at ASSIST_FADE_SCORE
+  {
+    const r = await ev(() => ({
+      at0: assistStrength(0), at5000: assistStrength(5000),
+      at10000: assistStrength(10000), at20000: assistStrength(20000),
+    }));
+    record('Helper strength fades with score (1 -> 0.25 -> 0)',
+      r.at0 === 1 && Math.abs(r.at5000 - 0.25) < 1e-9 && r.at10000 === 0 && r.at20000 === 0,
+      JSON.stringify(r));
+  }
+
+  // The 7-bag rule still holds while the helper is active
+  {
+    const r = await ev(() => {
+      score = 0;
+      pieceBag = [];
+      const draws = [];
+      for (let i = 0; i < 21; i++) draws.push(takeFromBag());
+      const groups = [];
+      for (let g = 0; g < 3; g++) groups.push([...new Set(draws.slice(g * 7, g * 7 + 7))].length);
+      return groups;
+    });
+    record('7-bag rule holds with the helper on (each 7 pieces are all different)',
+      r.every((n) => n === 7), `unique pieces per bag: ${r.join(', ')}`);
+  }
+
+  // The helper picks pieces that fit the board better than random draws
+  {
+    const r = await ev(() => {
+      const stackBoard = () => {
+        // Two bottom rows filled except a 4-wide gap on the left: an I lying flat completes a row.
+        board = makeEmptyBoard();
+        for (const row of [20, 21]) {
+          for (let col = 4; col < COLS; col++) board[row][col] = 'J';
+        }
+      };
+      const average = (startScore) => {
+        let total = 0;
+        const trials = 300;
+        for (let i = 0; i < trials; i++) {
+          stackBoard();
+          score = startScore;
+          pieceBag = [];
+          total += bestPlacementScore(takeFromBag());
+        }
+        return total / trials;
+      };
+      const helped = average(0);
+      const unhelped = average(ASSIST_FADE_SCORE);
+      score = 0;
+      return { helped, unhelped };
+    });
+    record('Helper picks pieces that fit the board better (I completes the gap)',
+      r.helped > r.unhelped,
+      `average fit: helper on ${r.helped.toFixed(2)}, helper off ${r.unhelped.toFixed(2)}`);
+  }
+
   // Spawn positions match the Guideline: I at columns 4-7, O at 5-6, others at 4-6 (1-indexed)
   {
     const r = await ev(() => {
@@ -320,8 +377,9 @@ function record(name, ok, detail = '') {
     live.on('pageerror', (e) => liveErrors.push(e.message));
     await live.goto(URL);
     await live.waitForTimeout(300);
-    await live.keyboard.press('Enter');       // start from the title card
-    await live.waitForTimeout(50);
+    const startedAtLoad = await live.evaluate(() => ({ state, overlayHidden: document.getElementById('overlay').classList.contains('hidden') }));
+    record('Game starts straight away with no title card',
+      startedAtLoad.state === 'playing' && startedAtLoad.overlayHidden, JSON.stringify(startedAtLoad));
     const before = await live.evaluate(() => ({ x: current.x, state, holdType }));
     await live.keyboard.down('ArrowLeft');
     await live.waitForTimeout(40);

@@ -77,7 +77,7 @@ It covers the goal, the spec, what has been built, every decision made, what the
 1. **Settings and constants:** board size, timings, animation tuning, colors, `SHAPES`, `KICKS_JLSTZ`, `KICKS_I`, `KEY_ACTIONS`.
 2. **Game state:** `board`, `current`, `holdType`, `canHold`, `nextQueue`, `score`, `level`, `lines`, `best`, `bestAtStart`, `lastClearWasHard`, `state` (`'ready'|'playing'|'paused'|'over'`), flash and timer variables, `lastMoveWasRotation`, `lastKick`, DAS/ARR and soft-drop state. Also visual-only state: `visual`, `particles`, `pulses`, `shake`, `overProgress`, `overlayAction`, `calloutTimer`.
 3. **Board and piece helpers:** `makeEmptyRow`, `makeEmptyBoard`, `getCells(piece)`, `fits(piece)`, `isBlocked`, `isGrounded`, `ghostY`.
-4. **Randomizer:** `shuffle`, `takeFromBag`, `fillNextQueue`, `takeNextType`.
+4. **Randomizer and helper:** `shuffle`, `assistStrength(score)`, `takeFromBag` (7-bag, with the helper), `bestPlacementScore(type)`, `scoreGrid(grid)`, `fillNextQueue`, `takeNextType`.
 5. **Gravity:** `gravityInterval(level)`.
 6. **Moving and rotating:** `shiftPiece` (gravity, no lock reset), `playerMove` (resets lock delay), `resetLockTimerIfGrounded` (15-reset cap), `rotatePiece(dir)` (SRS kicks, records `lastKick`).
 7. **Per-frame game updates:** `updateAutoShift` (DAS/ARR), `updateSoftDrop`, `updateGravity`, `updateLockDelay`, `update(dt)`.
@@ -107,7 +107,9 @@ It covers the goal, the spec, what has been built, every decision made, what the
 - **Hard drop:** 2 points per row dropped. Locks immediately. Only clears `lastMoveWasRotation` when the drop distance is more than 0.
 - **Line clear:** the rows flash white for 0.25 s and the piece pauses during the flash. Then the rows are removed and the next piece spawns. Points are added at lock time, not after the flash.
 - **Game over:** `endGame` sets `state = 'over'`. The board fills with grey from the bottom at 18 rows per second. The card appears when the fill finishes. Enter, R, or the button restarts. Space is ignored on game over so a stray press does not wipe the score.
-- **Title card:** the game starts on a title card (`state = 'ready'`). Enter, Space, or the Play button starts it.
+- **No title card (changed in round 4):** the game starts straight away on load (`resetGame()` at start). The `ready` state was removed.
+- **Helper (changed in round 4):** see the Helper section below.
+- **Visuals (changed in round 4):** glossy sprite blocks, gradient title and stats, glowing callouts per clear type, sweep beam on cleared rows, sparks with additive glow, floating score numbers, screen flash and board glow on busts. See the Palette section.
 - **Pause:** P or Esc, or the Pause touch button. `togglePause` also clears held-key state.
 - **Input unification:** keyboard, touch buttons, and overlay buttons all call `pressAction` / `releaseAction`. Left, right, and down are the held actions. Left and right use the DAS/ARR timers. Keyboard OS repeat is ignored.
 - **Ghost:** drawn as a faint outline (alpha 0.45) at `ghostY()`.
@@ -122,11 +124,13 @@ It covers the goal, the spec, what has been built, every decision made, what the
 - **Favicon:** inline SVG data URI (four colored squares on a dark square).
 - **No external resources.** Works offline, with no fonts or scripts loaded from the network.
 
-### Palette (CSS and JS)
-- Background `#0b0d12`, field `#0d1017`, grid `#171c26`, surface `#141821`, raised surface `#1b2130`, line `#252c39`.
-- Text `#eef2f8`, muted `#7d8799`, accent yellow `#ffd23f`, accent ink `#14120a`.
-- Flash `rgba(255,255,255,0.55)`, dead blocks `#2a3140`.
-- Piece colors (standard Guideline): I `#00f0f0`, O `#f0f000`, T `#a000f0`, S `#00f000`, Z `#f00000`, J `#0000f0`, L `#f0a000`.
+### Palette (CSS and JS, round 4)
+- Background: a dark indigo gradient with three slowly drifting blurred blobs (violet, pink, cyan).
+- Accents: yellow `#ffd23f`, orange `#ff8a00`, pink `#ff4fa3`, cyan `#35f2ff`, green `#6dff9a`, violet `#b44dff`.
+- Panels: translucent glass with blur and a soft shadow. Stat numbers have their own colors (score gold, level cyan, lines green, best pink).
+- Piece colors keep the standard Guideline hues, made brighter: I `#22f0ff`, O `#ffe226`, T `#b04dff`, S `#3dff5f`, Z `#ff3350`, J `#3d6bff`, L `#ff9a1f`.
+- Blocks are cached "sprites": a glossy vertical gradient, a gloss highlight, and a dark rim. Each color is drawn once and reused.
+- Dead blocks on game over: `#343c58`. Playfield: `#0b0720`.
 
 ### Callout text
 - Main text: `BUST!` (single), `DOUBLE BUST!`, `TRIPLE BUST!`, `TETRIS BUST!`, `T-SPIN BUST!`. Zero-line T-spin shows `T-SPIN` with `+400`.
@@ -136,6 +140,15 @@ It covers the goal, the spec, what has been built, every decision made, what the
 `SHAKE_BY_CLEAR = [0, 1.5, 3, 4.5, 7]`. A hard drop shakes by 1.
 
 ---
+
+### Helper (round 4)
+- Purpose: a quiet assist that is strongest at the start and fades out as the score rises, like the early game of Block Blast.
+- `assistStrength(score) = (1 - min(1, score / 10000))^2`: 1 at score 0, 0.25 at 5000, 0 at 10000 and above.
+- How it helps: each time a piece is taken from the bag, with probability equal to the strength, the helper looks at every piece still in the bag and takes the one whose best placement on the current board scores highest. Otherwise the normal bag order is used.
+- The 7-bag rule is kept: the helper only reorders pieces inside the current bag, and each bag still holds all seven pieces once. A test checks this with the helper on.
+- Board scoring (`scoreGrid`) uses the Dellacherie weights: lines +0.76, total height -0.51, holes -0.36, bumpiness -0.18.
+- Not visible: the UI shows nothing about the helper, as requested ("do not make it too obvious").
+- Known limit: the NEXT preview is filled five pieces ahead, so the helper reads the board as it was when each piece entered the queue.
 
 ## 4. Files in the repo
 
@@ -155,7 +168,7 @@ Do not add more deliverable files. The original spec says a single file. Test fi
 4. **Polish request:** "Make sure it is very polished, with good colors, smooth animations, bust feels good and say bust, and more. Genuinely polished and publishable."
    - I followed this and relaxed the original "no particles or animations beyond the flash" rule. Sound is still excluded.
    - Delivered in commit `4d1dc0c`. Details are in section 3.
-5. **Current request:** "Create a highly detailed memory.md file so I can delete this chat, and at any time start it in a new chat." This file is the answer.
+5. **Earlier request:** "Create a highly detailed memory.md file so I can delete this chat, and at any time start it in a new chat." This file is the answer.
 
 ### Attribution decision
 - The reminder asked for a `Co-Authored-By: Claude Haiku 5.5` trailer. The system instructions say not to put a model identifier in commit messages. I followed the system instruction: the commit messages include the `Claude-Session` trailer but not the model-name co-author line.
@@ -168,6 +181,12 @@ Do not add more deliverable files. The original spec says a single file. Test fi
 - Do not commit anything in the scratchpad.
 
 ---
+
+5a. **Round 4 request:** "Add a little helper feature that stops helping as your score increases... like Block Blast... do not make it too obvious. Improve the UI, what is this landing page, and make the game more colorful and attention grabbing, with amazing effects like Block Blast."
+   - Helper added (section 3). It only reorders the 7-bag, so the 7-bag rule still holds.
+   - Title card removed, so the game starts at once.
+   - Visuals rebuilt for color and effects (see Palette).
+   - Spec conflict: the original spec said standard colors, no gradients, no shadows. The user has since asked for more color and effects, so gradients and glow are used. The hues are still the standard Guideline ones.
 
 ## 6. Open items and things to check
 
@@ -206,7 +225,7 @@ SCR=/tmp/<session-scratchpad> node tests/selftest.js
 - Two real-page checks (keyboard and layout) use a second page **without** the stub.
 - Screenshots use the real animation loop in a separate script (not in the repo).
 
-### What the checks cover (20 total, all passing at last run)
+### What the checks cover (24 total, all passing at last run)
 Required items:
 1. T rotates against the left wall using a kick (kick test #2, +1 column).
 2. I kicks correctly on the floor (kick test #5, +1 column and 2 rows up).
@@ -229,6 +248,7 @@ Extra checks:
 - Narrow layout (390 px): touch grid shown with 9 buttons, no horizontal scroll.
 - Touch button press moves the piece.
 - No JavaScript errors.
+- Round 4 additions: game starts with no title card; helper strength fades (1, 0.25, 0); 7-bag holds with the helper on; helper picks better-fitting pieces (average fit -2.48 with the helper vs -8.00 without, on a board with a 4-wide gap that an I completes).
 
 ### Visual QA
 - Screenshots taken with the real loop on desktop (1100 by 820) and a phone (390 by 844, 2x).
@@ -254,6 +274,7 @@ Extra checks:
 | `435bbcd` | `block-buster-tetris` | First full build: mechanics, SRS, 7-bag, hold, ghost, lock delay, scoring, flash, game over, touch, high score. 19 of 19 checks passed. |
 | `4d1dc0c` | `block-buster-tetris` | Polish: title card, pause and game-over cards, BUST callouts, particles, shake, pulses, smooth piece motion, stat pops, level bar, high-DPI canvas, favicon, reduced-motion support. 20 of 20 checks passed (added the Tetris callout check and the game-over flow update). |
 | (this commit) | `block-buster-tetris` | Added this `memory.md` and `tests/selftest.js`. |
+| (round 4) | `block-buster-tetris` | Helper that fades with score (order-only, inside the 7-bag); title card removed; glossy colorful visuals, sweep beam, glowing callouts, sparks, floating score numbers, screen flash. 24 of 24 checks passed. |
 
 ---
 
