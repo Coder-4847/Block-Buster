@@ -4,39 +4,48 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Block Buster</title>
+  <meta name="description" content="Block Buster is a clean, fast Tetris clone that follows the modern Guideline: 7-bag, SRS rotation, hold, ghost piece, T-spins and back-to-back bonuses.">
+  <meta name="theme-color" content="#0b0d12">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b0d12'/%3E%3Crect x='6' y='6' width='9' height='9' rx='2' fill='%2300f0f0'/%3E%3Crect x='17' y='6' width='9' height='9' rx='2' fill='%23ffd23f'/%3E%3Crect x='6' y='17' width='9' height='9' rx='2' fill='%23a000f0'/%3E%3Crect x='17' y='17' width='9' height='9' rx='2' fill='%23f00000'/%3E%3C/svg%3E">
   <style>
     /* ---------- Colors ---------- */
     :root {
-      --bg: #15171c;
-      --field: #0e0f13;
-      --panel: #1a1d24;
-      --line: #2a2e38;
-      --text: #e6e8ec;
-      --muted: #7d8491;
+      --bg: #0b0d12;
+      --field: #0d1017;
+      --surface: #141821;
+      --surface-raised: #1b2130;
+      --line: #252c39;
+      --text: #eef2f8;
+      --muted: #7d8799;
+      --accent: #ffd23f;
+      --accent-ink: #14120a;
     }
 
-    /* ---------- Page layout ---------- */
+    /* ---------- Base page ---------- */
     * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
     html, body { margin: 0; min-height: 100%; }
     body {
       background: var(--bg);
       color: var(--text);
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 16px;
+      padding: 24px 16px 32px;
+      -webkit-font-smoothing: antialiased;
       -webkit-tap-highlight-color: transparent;
     }
-    .title {
-      font-size: 14px;
-      font-weight: 600;
-      letter-spacing: 0.3em;
-      color: var(--muted);
-      margin: 8px 0 16px;
-    }
 
-    /* Wide screens: HOLD | board | NEXT and stats */
+    .brand h1 {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.34em;
+      margin: 0 0 20px 0.34em;
+    }
+    .brand span { color: var(--accent); }
+
+    /* ---------- Layout: HOLD | board | NEXT and stats ---------- */
     .game {
       display: grid;
       grid-template-columns: 150px auto 170px;
@@ -49,31 +58,50 @@
     .side { grid-area: side; display: flex; flex-direction: column; gap: 12px; }
 
     .panel {
-      background: var(--panel);
+      background: var(--surface);
       border: 1px solid var(--line);
-      padding: 12px;
+      border-radius: 12px;
+      padding: 14px;
     }
     .label {
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.15em;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
       color: var(--muted);
-      margin: 0 0 8px;
+      margin: 0 0 10px;
     }
-    .stat + .stat { margin-top: 12px; }
+    .stat + .stat { margin-top: 14px; }
     .stat-value {
-      font-size: 22px;
+      display: inline-block;
+      font-size: 24px;
+      font-weight: 700;
       margin: 0;
       font-variant-numeric: tabular-nums;
+      transform-origin: left center;
+    }
+    .progress {
+      height: 4px;
+      margin-top: 8px;
+      border-radius: 2px;
+      background: var(--line);
+      overflow: hidden;
+    }
+    .progress span {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: var(--accent);
+      transition: width 0.3s ease;
     }
 
     /* ---------- Playfield and previews ---------- */
     #board {
       display: block;
-      height: min(78vh, 600px);
+      height: min(78vh, 640px);
       width: auto;
       background: var(--field);
       border: 1px solid var(--line);
+      border-radius: 10px;
     }
     #holdCanvas, #nextCanvas {
       display: block;
@@ -82,7 +110,35 @@
     #holdCanvas { width: 120px; height: 90px; }
     #nextCanvas { width: 120px; height: 320px; }
 
-    /* Pause and game-over message drawn over the playfield */
+    /* Big "BUST!" callout that pops over the playfield */
+    .callout {
+      position: absolute;
+      left: 50%;
+      top: 30%;
+      width: 100%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .callout-main {
+      font-size: 30px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      margin: 0;
+      text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+    }
+    .callout-sub {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin: 8px 0 0;
+    }
+
+    /* Start, pause and game-over card drawn over the playfield */
     .overlay {
       position: absolute;
       inset: 0;
@@ -90,25 +146,49 @@
       align-items: center;
       justify-content: center;
       padding: 16px;
-      text-align: center;
-      background: rgba(14, 15, 19, 0.85);
+      background: rgba(11, 13, 18, 0.86);
+      border-radius: 10px;
+      transition: opacity 0.25s ease, visibility 0.25s;
     }
-    .overlay.hidden { display: none; }
+    .overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .overlay-card { text-align: center; max-width: 280px; }
     .overlay-title {
-      font-size: 24px;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      margin: 0 0 8px;
+      font-size: 28px;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      margin: 0 0 10px;
     }
+    .overlay-title span { color: var(--accent); }
     .overlay-text {
       font-size: 15px;
-      margin: 0 0 6px;
+      margin: 0 0 18px;
+      opacity: 0.9;
     }
     .overlay-hint {
-      font-size: 13px;
+      font-size: 12px;
       color: var(--muted);
-      margin: 0;
+      margin: 16px 0 0;
     }
+    .btn-primary {
+      font: inherit;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: var(--accent-ink);
+      background: var(--accent);
+      border: 0;
+      border-radius: 10px;
+      padding: 12px 30px;
+      cursor: pointer;
+      transition: transform 0.12s ease, filter 0.12s ease;
+    }
+    .btn-primary:hover { filter: brightness(1.06); }
+    .btn-primary:active { transform: scale(0.97); }
+    .btn-primary:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
 
     /* ---------- Controls help (wide screens) ---------- */
     .help {
@@ -116,29 +196,36 @@
       font-size: 12px;
       color: var(--muted);
       text-align: center;
-      line-height: 1.6;
-      margin: 20px 0 0;
+      line-height: 1.7;
+      margin: 24px 0 0;
     }
 
-    /* ---------- Touch buttons (hidden on wide screens) ---------- */
+    /* ---------- Touch buttons (small screens only) ---------- */
     .touch { display: none; }
     .touch button {
       font: inherit;
       font-size: 14px;
+      font-weight: 600;
       color: var(--text);
-      background: var(--panel);
+      background: var(--surface);
       border: 1px solid var(--line);
+      border-radius: 10px;
       padding: 14px 0;
       touch-action: manipulation;
       user-select: none;
       -webkit-user-select: none;
       -webkit-touch-callout: none;
+      transition: transform 0.08s ease, background 0.08s ease;
     }
-    .touch button:active { background: var(--line); }
+    .touch button:active {
+      background: var(--surface-raised);
+      transform: scale(0.96);
+    }
 
     /* ---------- Small screens (below 600 px wide) ---------- */
     @media (max-width: 599px) {
-      body { padding: 12px 16px; }
+      body { padding: 16px 16px 24px; }
+      .brand h1 { margin-bottom: 14px; }
       .game {
         grid-template-columns: 1fr 1fr;
         grid-template-areas:
@@ -148,50 +235,66 @@
         width: 100%;
         max-width: 420px;
       }
-      #board { height: min(62vh, 600px); }
+      #board { height: min(64vh, 640px); }
+      .callout-main { font-size: 22px; }
+      .overlay-title { font-size: 24px; }
       .touch {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 8px;
         width: 100%;
         max-width: 420px;
-        margin-top: 12px;
+        margin-top: 14px;
       }
     }
 
     @media (min-width: 600px) {
       .help { display: block; }
     }
+
+    /* Respect users who ask for less motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; }
+    }
   </style>
 </head>
 <body>
-  <h1 class="title">BLOCK BUSTER</h1>
+  <header class="brand">
+    <h1>BLOCK <span>BUSTER</span></h1>
+  </header>
 
   <main class="game">
     <!-- HOLD -->
     <section class="panel hold-panel">
       <h2 class="label">HOLD</h2>
-      <canvas id="holdCanvas" width="120" height="90"></canvas>
+      <canvas id="holdCanvas"></canvas>
     </section>
 
-    <!-- Playfield -->
+    <!-- Playfield, callouts and overlay cards -->
     <section class="board-wrap">
       <canvas id="board" width="300" height="600"></canvas>
+      <div id="callout" class="callout" aria-live="polite">
+        <p id="calloutMain" class="callout-main"></p>
+        <p id="calloutSub" class="callout-sub"></p>
+      </div>
       <div id="overlay" class="overlay hidden">
-        <div>
+        <div class="overlay-card">
           <p id="overlayTitle" class="overlay-title"></p>
           <p id="overlayText" class="overlay-text"></p>
+          <button id="overlayButton" class="btn-primary" hidden></button>
           <p id="overlayHint" class="overlay-hint"></p>
         </div>
       </div>
     </section>
 
-    <!-- NEXT, SCORE, LEVEL, LINES, BEST -->
     <div class="side">
+      <!-- NEXT -->
       <section class="panel next-panel">
         <h2 class="label">NEXT</h2>
-        <canvas id="nextCanvas" width="120" height="320"></canvas>
+        <canvas id="nextCanvas"></canvas>
       </section>
+
+      <!-- SCORE, LEVEL, LINES, BEST -->
       <section class="panel stats-panel">
         <div class="stat">
           <h2 class="label">SCORE</h2>
@@ -200,6 +303,7 @@
         <div class="stat">
           <h2 class="label">LEVEL</h2>
           <p id="level" class="stat-value">1</p>
+          <div class="progress"><span id="levelBar"></span></div>
         </div>
         <div class="stat">
           <h2 class="label">LINES</h2>
@@ -248,20 +352,38 @@
     const SPAWN_X = 3;
     const SPAWN_Y = 1;
 
-    // Pixel sizes for drawing.
-    const CELL = 30;            // size of one block on the playfield
-    const PREVIEW_CELL = 14;    // size of one block in HOLD and NEXT
-    const NEXT_COUNT = 5;       // how many upcoming pieces to show
+    // Drawing sizes, in logical pixels. The canvases are scaled to the screen for sharp output.
+    const CELL = 30;                 // one block on the playfield
+    const BOARD_W = COLS * CELL;
+    const BOARD_H = VISIBLE_ROWS * CELL;
+    const PREVIEW_CELL = 14;         // one block in HOLD and NEXT
+    const HOLD_W = 120;
+    const HOLD_H = 90;
+    const NEXT_W = 120;
+    const NEXT_H = 320;
+    const NEXT_COUNT = 5;            // how many upcoming pieces to show
 
     // Timing, in seconds.
     const LOCK_DELAY = 0.5;
     const MAX_LOCK_RESETS = 15;
-    const DAS = 0.167;              // delay before a held left/right starts repeating
-    const ARR = 0.033;              // time between repeated moves
+    const DAS = 0.167;               // delay before a held left/right starts repeating
+    const ARR = 0.033;               // time between repeated moves
     const SOFT_DROP_INTERVAL = 0.05; // time per row while Down is held
-    const CLEAR_FLASH_TIME = 0.25;  // how long cleared rows flash before they disappear
+    const CLEAR_FLASH_TIME = 0.25;   // how long cleared rows flash before they disappear
+    const LOCK_PULSE_TIME = 0.2;     // white flash on blocks as they lock
+    const SHAKE_TIME = 0.35;         // how long the screen shakes after a bust
 
-    // Colors (Guideline piece colors, flat, no effects).
+    // Animation tuning.
+    const VISUAL_SMOOTHING = 26;     // higher = the falling piece catches up to its real spot faster
+    const PARTICLE_GRAVITY = 900;    // pixels per second squared
+    const MAX_PARTICLES = 260;
+    const GAME_OVER_ROWS_PER_SECOND = 18;
+    const SHAKE_BY_CLEAR = [0, 1.5, 3, 4.5, 7];  // shake strength for 0-4 rows cleared
+
+    // Respect the operating system's "reduce motion" setting: no shake, particles or sliding.
+    const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Colors. The seven piece colors are the standard Guideline colors.
     const COLORS = {
       I: '#00f0f0',
       O: '#f0f000',
@@ -271,11 +393,13 @@
       J: '#0000f0',
       L: '#f0a000',
     };
-    const COLOR_FIELD = '#0e0f13';
-    const COLOR_GRID = '#1f2229';
-    const COLOR_FLASH = 'rgba(255, 255, 255, 0.4)';
+    const COLOR_FIELD = '#0d1017';
+    const COLOR_GRID = '#171c26';
+    const COLOR_FLASH = 'rgba(255, 255, 255, 0.55)';
+    const COLOR_DEAD = '#2a3140';    // grey blocks that fill the board on game over
 
     const PIECE_NAMES = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
+    const CLEAR_NAMES = ['', 'SINGLE', 'DOUBLE', 'TRIPLE', 'TETRIS'];
     const BEST_KEY = 'blockBusterBest';
 
     // Piece shapes. Each piece has 4 rotation states:
@@ -367,6 +491,8 @@
       KeyP: 'pause',
       Escape: 'pause',
       KeyR: 'restart',
+      Enter: 'confirm',
+      NumpadEnter: 'confirm',
     };
 
     // ============================================================
@@ -383,8 +509,9 @@
     let level = 1;
     let lines = 0;
     let best = 0;
+    let bestAtStart = 0;       // the best score when this game began (for "New best!")
     let lastClearWasHard = false; // was the previous line clear a Tetris or T-spin? (for back-to-back)
-    let state = 'playing';     // 'playing', 'paused', or 'over'
+    let state = 'ready';       // 'ready' (title card), 'playing', 'paused', or 'over'
     let flashRows = [];        // rows currently flashing after a line clear
     let flashTimer = 0;
     let gravityTimer = 0;
@@ -399,21 +526,35 @@
     let softTimer = 0;
     let lastFrameTime = null;
 
+    // Visual-only state (animations). None of this affects the rules.
+    let visual = { x: SPAWN_X, y: SPAWN_Y };   // smoothed on-screen spot of the falling piece
+    let particles = [];        // small squares that burst out of cleared rows
+    let pulses = [];           // white flashes on blocks that just locked
+    let shake = { time: 0, duration: SHAKE_TIME, amount: 0 };
+    let overProgress = 0;      // rows of grey filled in during the game-over animation
+    let overlayAction = null;  // what the overlay button does right now
+    let calloutTimer = null;
+
     // Page elements we update often.
     const boardCanvas = document.getElementById('board');
-    const boardCtx = boardCanvas.getContext('2d');
     const holdCanvas = document.getElementById('holdCanvas');
-    const holdCtx = holdCanvas.getContext('2d');
     const nextCanvas = document.getElementById('nextCanvas');
-    const nextCtx = nextCanvas.getContext('2d');
+    let boardCtx = null;       // set by layoutCanvases()
+    let holdCtx = null;
+    let nextCtx = null;
     const scoreText = document.getElementById('score');
     const levelText = document.getElementById('level');
     const linesText = document.getElementById('lines');
     const bestText = document.getElementById('best');
+    const levelBar = document.getElementById('levelBar');
+    const calloutEl = document.getElementById('callout');
+    const calloutMain = document.getElementById('calloutMain');
+    const calloutSub = document.getElementById('calloutSub');
     const overlayEl = document.getElementById('overlay');
     const overlayTitle = document.getElementById('overlayTitle');
     const overlayText = document.getElementById('overlayText');
     const overlayHint = document.getElementById('overlayHint');
+    const overlayButton = document.getElementById('overlayButton');
 
     // ============================================================
     // 3. BOARD AND PIECE HELPERS
@@ -433,7 +574,7 @@
       return newBoard;
     }
 
-    // Return the 4 board positions a piece occupies.
+    // Return the board positions a piece occupies.
     function getCells(piece) {
       return SHAPES[piece.type][piece.rot].map(([dx, dy]) => ({
         x: piece.x + dx,
@@ -580,7 +721,7 @@
     }
 
     // ============================================================
-    // 7. PER-FRAME UPDATES (called from update)
+    // 7. PER-FRAME GAME UPDATES
     // ============================================================
 
     // Auto-shift: after DAS, a held left or right moves once every ARR.
@@ -644,7 +785,7 @@
 
     // Advance the game by dt seconds.
     function update(dt) {
-      // During a line-clear flash, nothing moves. When the flash ends, remove the rows.
+      // During a line-clear flash nothing moves. When the flash ends, the rows are removed.
       if (flashRows.length > 0) {
         flashTimer -= dt;
         if (flashTimer <= 0) {
@@ -667,6 +808,7 @@
     // Put a new piece of this type at the top of the board. If it does not fit, the game is over.
     function placeNewPiece(type) {
       current = { type, rot: 0, x: SPAWN_X, y: SPAWN_Y };
+      visual = { x: current.x, y: current.y };
       lockTimer = 0;
       lockResets = 0;
       gravityTimer = 0;
@@ -703,6 +845,7 @@
       const distance = ghostY() - current.y;
       if (distance > 0) {
         lastMoveWasRotation = false;
+        startShake(1);
       }
       current.y += distance;
       addScore(distance * 2);
@@ -742,26 +885,32 @@
     // Lock the falling piece into the board, score any cleared lines, then spawn the next piece.
     function lockPiece() {
       const tSpin = isTSpin();
-      for (const cell of getCells(current)) {
+      const lockedCells = getCells(current);
+      for (const cell of lockedCells) {
         board[cell.y][cell.x] = current.type;
       }
+      addLockPulses(lockedCells);
       current = null;
       canHold = true;
 
       const fullRows = findFullRows();
       if (fullRows.length > 0) {
-        awardLines(fullRows.length, tSpin);
+        const award = awardLines(fullRows.length, tSpin);
         flashRows = fullRows;
         flashTimer = CLEAR_FLASH_TIME;
+        spawnClearBurst(fullRows);
+        celebrateClear(award);
       } else {
         if (tSpin) {
-          addScore(400 * level); // T-spin with no lines cleared
+          const points = 400 * level; // T-spin with no lines cleared
+          addScore(points);
+          showCallout('T-SPIN', `+${points}`);
         }
         spawnPiece();
       }
     }
 
-    // Score a line clear and update lines and level.
+    // Score a line clear and update lines and level. Returns what happened so the celebration can match it.
     // Normal: single 100, double 300, triple 500, Tetris 800 (times level).
     // T-spin: single 800, double 1200, triple 1600 (times level).
     // Back-to-back Tetris or T-spin clears get 1.5x.
@@ -772,14 +921,17 @@
         : [100, 300, 500, 800][count - 1];
       points *= level;
 
-      if (isHard && lastClearWasHard) {
+      const backToBack = isHard && lastClearWasHard;
+      if (backToBack) {
         points = Math.floor(points * 1.5);
       }
       addScore(points);
       lastClearWasHard = isHard;
 
+      const oldLevel = level;
       lines += count;
       level = Math.floor(lines / 10) + 1;
+      return { count, tSpin, points, backToBack, leveledUp: level > oldLevel, levelNow: level };
     }
 
     // Add points to the score, and update BEST if the score beats it.
@@ -805,17 +957,8 @@
     // 10. GAME FLOW (start, restart, pause, game over)
     // ============================================================
 
-    // Stop the game and show the final score.
-    function endGame() {
-      state = 'over';
-      current = null;
-      moveDir = 0;
-      softDropping = false;
-      refreshOverlay();
-    }
-
-    // Start a new game from scratch.
-    function resetGame() {
+    // Reset everything about the game except the falling piece.
+    function prepareNewGame() {
       board = makeEmptyBoard();
       pieceBag = [];
       nextQueue = [];
@@ -826,16 +969,38 @@
       level = 1;
       lines = 0;
       lastClearWasHard = false;
+      bestAtStart = best;
       flashRows = [];
       flashTimer = 0;
       moveDir = 0;
       softDropping = false;
+      particles = [];
+      pulses = [];
+      shake.amount = 0;
+      shake.time = shake.duration;
+      overProgress = 0;
+      hideCallout();
+    }
+
+    // Start a new game from scratch.
+    function resetGame() {
+      prepareNewGame();
       state = 'playing';
       spawnPiece();
       refreshOverlay();
     }
 
-    // Pause or resume. Does nothing when the game is over.
+    // Stop the game. The board fills with grey, then the game-over card appears.
+    function endGame() {
+      state = 'over';
+      current = null;
+      moveDir = 0;
+      softDropping = false;
+      overProgress = REDUCED_MOTION ? ROWS : 0;
+      refreshOverlay();
+    }
+
+    // Pause or resume. Does nothing unless the game is running or paused.
     function togglePause() {
       if (state === 'playing') {
         state = 'paused';
@@ -872,20 +1037,38 @@
     }
 
     // ============================================================
-    // 12. INPUT (keyboard and touch both use these)
+    // 12. INPUT (keyboard, touch and overlay buttons all use these)
     // ============================================================
 
     // Start an action. Left, right and down keep going while held; the others happen once.
     function pressAction(action) {
-      if (action === 'restart') {
-        resetGame();
+      // Title card: any start key begins a game.
+      if (state === 'ready') {
+        if (['start', 'confirm', 'hardDrop', 'restart'].includes(action)) resetGame();
         return;
       }
+      // Game over: only explicit restart keys work, so a stray Space does not wipe the score.
+      if (state === 'over') {
+        if (action === 'confirm' || action === 'restart') resetGame();
+        return;
+      }
+      // Paused: only resume and restart work.
+      if (state === 'paused') {
+        if (action === 'pause' || action === 'confirm') togglePause();
+        else if (action === 'restart') resetGame();
+        return;
+      }
+
+      // Playing.
       if (action === 'pause') {
         togglePause();
         return;
       }
-      if (state !== 'playing' || !current) return;
+      if (action === 'restart') {
+        resetGame();
+        return;
+      }
+      if (!current) return;
 
       if (action === 'left') startAutoShift(-1);
       else if (action === 'right') startAutoShift(1);
@@ -942,9 +1125,209 @@
       button.addEventListener('contextmenu', (event) => event.preventDefault());
     });
 
+    // The card's button (Play, Resume, Play again). Blur afterwards so Space cannot press it again.
+    overlayButton.addEventListener('click', () => {
+      overlayButton.blur();
+      if (overlayAction) pressAction(overlayAction);
+    });
+
     // ============================================================
-    // 13. DRAWING
+    // 13. ANIMATION: SMOOTH MOTION, PARTICLES, SHAKE, CALLOUTS
     // ============================================================
+
+    // Ease the falling piece toward its real position so sideways moves and drops glide.
+    function updateVisuals(dt) {
+      if (!current) return;
+      if (REDUCED_MOTION) {
+        visual = { x: current.x, y: current.y };
+        return;
+      }
+      const amount = 1 - Math.exp(-VISUAL_SMOOTHING * dt);
+      visual.x += (current.x - visual.x) * amount;
+      visual.y += (current.y - visual.y) * amount;
+      if (Math.abs(current.x - visual.x) < 0.01) visual.x = current.x;
+      if (Math.abs(current.y - visual.y) < 0.01) visual.y = current.y;
+    }
+
+    // Advance particles, lock pulses, screen shake and the game-over fill.
+    // This runs in real time, so the effects keep playing during the flash.
+    function updateEffects(dt) {
+      shake.time += dt;
+
+      for (const p of particles) {
+        p.vy += PARTICLE_GRAVITY * dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.life -= dt;
+      }
+      particles = particles.filter((p) => p.life > 0);
+
+      for (const pulse of pulses) {
+        pulse.life -= dt;
+      }
+      pulses = pulses.filter((pulse) => pulse.life > 0);
+
+      if (state === 'over' && overProgress < VISIBLE_ROWS) {
+        overProgress = Math.min(VISIBLE_ROWS, overProgress + dt * GAME_OVER_ROWS_PER_SECOND);
+        if (overProgress >= VISIBLE_ROWS) {
+          refreshOverlay();
+        }
+      }
+    }
+
+    // Start a screen shake. The shake fades out over SHAKE_TIME.
+    function startShake(strength) {
+      if (REDUCED_MOTION) return;
+      shake.amount = Math.max(strength, shake.time < shake.duration ? shake.amount : 0);
+      shake.time = 0;
+      shake.duration = SHAKE_TIME;
+    }
+
+    // Current shake offset in logical pixels. Zero when no shake is running.
+    function shakeOffset() {
+      if (shake.time >= shake.duration) return { x: 0, y: 0 };
+      const strength = shake.amount * (1 - shake.time / shake.duration);
+      return {
+        x: (Math.random() * 2 - 1) * strength,
+        y: (Math.random() * 2 - 1) * strength,
+      };
+    }
+
+    // Make a block that flashes white for a moment when it locks in place.
+    function addLockPulses(cells) {
+      if (REDUCED_MOTION) return;
+      for (const cell of cells) {
+        if (cell.y < BUFFER_ROWS) continue;
+        pulses.push({ col: cell.x, visibleRow: cell.y - BUFFER_ROWS, life: LOCK_PULSE_TIME });
+      }
+    }
+
+    // Make one particle at (x, y) that flies outward and fades.
+    function makeParticle(x, y, color) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 90 + Math.random() * 220;
+      const life = 0.45 + Math.random() * 0.4;
+      return {
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 60,
+        life,
+        maxLife: life,
+        color,
+        size: 3 + Math.random() * 3,
+      };
+    }
+
+    // Burst particles from every block in the cleared rows (two per block, capped overall).
+    function spawnClearBurst(rows) {
+      if (REDUCED_MOTION) return;
+      for (const row of rows) {
+        if (row < BUFFER_ROWS) continue;
+        for (let col = 0; col < COLS; col++) {
+          const type = board[row][col];
+          if (!type) continue;
+          const x = col * CELL + CELL / 2;
+          const y = (row - BUFFER_ROWS) * CELL + CELL / 2;
+          for (let i = 0; i < 2 && particles.length < MAX_PARTICLES; i++) {
+            particles.push(makeParticle(x, y, COLORS[type]));
+          }
+        }
+      }
+    }
+
+    // Show the big "BUST!" text, shake the screen, and buzz on phones for a line clear.
+    function celebrateClear(award) {
+      let main = 'BUST!';
+      if (award.tSpin) main = 'T-SPIN BUST!';
+      else if (award.count === 4) main = 'TETRIS BUST!';
+      else if (award.count === 3) main = 'TRIPLE BUST!';
+      else if (award.count === 2) main = 'DOUBLE BUST!';
+
+      const parts = [`+${award.points}`];
+      if (award.backToBack) parts.push('Back-to-back');
+      if (award.leveledUp) parts.push(`Level ${award.levelNow}`);
+      showCallout(main, parts.join('  ·  '));
+
+      startShake(SHAKE_BY_CLEAR[award.count]);
+      if (navigator.vibrate) {
+        navigator.vibrate(award.count * 25);
+      }
+    }
+
+    // Show the callout text with a quick pop-in, hold, then fade out.
+    function showCallout(main, sub) {
+      calloutMain.textContent = main;
+      calloutSub.textContent = sub;
+      if (REDUCED_MOTION) {
+        calloutEl.style.opacity = '1';
+        clearTimeout(calloutTimer);
+        calloutTimer = setTimeout(hideCallout, 1200);
+        return;
+      }
+      calloutEl.animate([
+        { opacity: 0, transform: 'translate(-50%, -50%) scale(1.45)' },
+        { opacity: 1, transform: 'translate(-50%, -50%) scale(1)', offset: 0.16 },
+        { opacity: 1, transform: 'translate(-50%, -50%) scale(1)', offset: 0.7 },
+        { opacity: 0, transform: 'translate(-50%, -62%) scale(1)' },
+      ], { duration: 1200, easing: 'ease-out' });
+    }
+
+    // Hide the callout straight away (used when a new game starts).
+    function hideCallout() {
+      clearTimeout(calloutTimer);
+      calloutEl.style.opacity = '0';
+    }
+
+    // Briefly bump a number when it changes.
+    function popElement(el, text) {
+      const hadValue = el.textContent !== '';
+      el.textContent = text;
+      if (hadValue && !REDUCED_MOTION) {
+        el.animate([
+          { transform: 'scale(1.22)' },
+          { transform: 'scale(1)' },
+        ], { duration: 240, easing: 'ease-out' });
+      }
+    }
+
+    // ============================================================
+    // 14. DRAWING
+    // ============================================================
+
+    // Size a canvas to its on-screen size (times the screen density) so it looks sharp.
+    // Drawing code keeps using the logical sizes (BOARD_W, HOLD_W, ...).
+    function fitCanvas(canvas, logicalW, logicalH) {
+      const ctx = canvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.round(canvas.clientWidth * dpr));
+      canvas.height = Math.max(1, Math.round(canvas.clientHeight * dpr));
+      ctx.setTransform(canvas.width / logicalW, 0, 0, canvas.height / logicalH, 0, 0);
+      return ctx;
+    }
+
+    // Set up all three canvases. Called at start and whenever the window size changes.
+    function layoutCanvases() {
+      boardCtx = fitCanvas(boardCanvas, BOARD_W, BOARD_H);
+      holdCtx = fitCanvas(holdCanvas, HOLD_W, HOLD_H);
+      nextCtx = fitCanvas(nextCanvas, NEXT_W, NEXT_H);
+    }
+
+    // Draw one tile: a flat color with a thin light top edge and a dark bottom edge.
+    function drawTile(ctx, x, y, size, color) {
+      const edge = Math.max(2, Math.round(size * 0.1));
+      ctx.fillStyle = color;
+      ctx.fillRect(x + 1, y + 1, size - 2, size - 2);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.fillRect(x + 1, y + 1, size - 2, edge);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+      ctx.fillRect(x + 1, y + size - 1 - edge, size - 2, edge);
+    }
+
+    // Draw one block on the playfield. visibleRow counts from the top of the visible area.
+    function drawBlock(ctx, col, visibleRow, color) {
+      drawTile(ctx, col * CELL, visibleRow * CELL, CELL, color);
+    }
 
     // Draw the thin grid lines behind the playfield.
     function drawGridLines(ctx) {
@@ -954,20 +1337,14 @@
       for (let col = 1; col < COLS; col++) {
         const x = col * CELL + 0.5;
         ctx.moveTo(x, 0);
-        ctx.lineTo(x, VISIBLE_ROWS * CELL);
+        ctx.lineTo(x, BOARD_H);
       }
       for (let row = 1; row < VISIBLE_ROWS; row++) {
         const y = row * CELL + 0.5;
         ctx.moveTo(0, y);
-        ctx.lineTo(COLS * CELL, y);
+        ctx.lineTo(BOARD_W, y);
       }
       ctx.stroke();
-    }
-
-    // Draw one block on the playfield. visibleRow counts from the top of the visible area.
-    function drawBlock(ctx, col, visibleRow, color) {
-      ctx.fillStyle = color;
-      ctx.fillRect(col * CELL + 1, visibleRow * CELL + 1, CELL - 2, CELL - 2);
     }
 
     // Draw a faint outline where the current piece would land.
@@ -988,20 +1365,65 @@
       ctx.globalAlpha = 1;
     }
 
+    // Draw the falling piece at its smoothed position.
+    function drawFallingPiece(ctx) {
+      for (const cell of getCells({ ...current, x: visual.x, y: visual.y })) {
+        if (cell.y >= BUFFER_ROWS) {
+          drawBlock(ctx, cell.x, cell.y - BUFFER_ROWS, COLORS[current.type]);
+        }
+      }
+    }
+
     // Draw a light wash over the rows that are about to be removed.
     function drawFlashRows(ctx) {
       ctx.fillStyle = COLOR_FLASH;
       for (const row of flashRows) {
         if (row < BUFFER_ROWS) continue;
-        ctx.fillRect(0, (row - BUFFER_ROWS) * CELL, COLS * CELL, CELL);
+        ctx.fillRect(0, (row - BUFFER_ROWS) * CELL, BOARD_W, CELL);
       }
     }
 
-    // Draw the whole playfield: grid, placed blocks, flash, ghost, and the falling piece.
+    // Draw the fading white flashes on freshly locked blocks.
+    function drawPulses(ctx) {
+      for (const pulse of pulses) {
+        const alpha = 0.5 * (pulse.life / LOCK_PULSE_TIME);
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha.toFixed(3)})`;
+        ctx.fillRect(pulse.col * CELL + 1, pulse.visibleRow * CELL + 1, CELL - 2, CELL - 2);
+      }
+    }
+
+    // Draw the particles from cleared rows.
+    function drawParticles(ctx) {
+      for (const p of particles) {
+        const alpha = Math.max(0, p.life / p.maxLife);
+        const size = p.size * (0.4 + 0.6 * alpha);
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x - size / 2, p.y - size / 2, size, size);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // Draw the grey blocks that fill the board from the bottom on game over.
+    function drawGameOverFill(ctx) {
+      const filledRows = Math.floor(overProgress);
+      for (let i = 0; i < filledRows; i++) {
+        const visibleRow = VISIBLE_ROWS - 1 - i;
+        for (let col = 0; col < COLS; col++) {
+          drawBlock(ctx, col, visibleRow, COLOR_DEAD);
+        }
+      }
+    }
+
+    // Draw the whole playfield: grid, placed blocks, effects, ghost, and the falling piece.
     function drawPlayfield() {
       const ctx = boardCtx;
+      ctx.save();
+      const offset = shakeOffset();
+      ctx.translate(offset.x, offset.y);
+
       ctx.fillStyle = COLOR_FIELD;
-      ctx.fillRect(0, 0, boardCanvas.width, boardCanvas.height);
+      ctx.fillRect(-20, -20, BOARD_W + 40, BOARD_H + 40);
       drawGridLines(ctx);
 
       // Only the visible rows are drawn. The 2 hidden rows at the top are skipped.
@@ -1013,15 +1435,16 @@
       }
 
       drawFlashRows(ctx);
-
+      drawPulses(ctx);
+      if (state === 'over') {
+        drawGameOverFill(ctx);
+      }
       if (current) {
         drawGhost(ctx);
-        for (const cell of getCells(current)) {
-          if (cell.y >= BUFFER_ROWS) {
-            drawBlock(ctx, cell.x, cell.y - BUFFER_ROWS, COLORS[current.type]);
-          }
-        }
+        drawFallingPiece(ctx);
       }
+      drawParticles(ctx);
+      ctx.restore();
     }
 
     // Draw one piece centered on (centerX, centerY) in a preview canvas.
@@ -1036,61 +1459,96 @@
       const left = centerX - (width * PREVIEW_CELL) / 2;
       const top = centerY - (height * PREVIEW_CELL) / 2;
 
-      ctx.fillStyle = COLORS[type];
       for (const [x, y] of cells) {
-        ctx.fillRect(
-          left + (x - minX) * PREVIEW_CELL + 1,
-          top + (y - minY) * PREVIEW_CELL + 1,
-          PREVIEW_CELL - 2,
-          PREVIEW_CELL - 2
+        drawTile(
+          ctx,
+          left + (x - minX) * PREVIEW_CELL,
+          top + (y - minY) * PREVIEW_CELL,
+          PREVIEW_CELL,
+          COLORS[type]
         );
       }
     }
 
     // Draw the HOLD piece. It looks faded when holding is not allowed right now.
     function drawHold() {
-      holdCtx.clearRect(0, 0, holdCanvas.width, holdCanvas.height);
+      holdCtx.clearRect(0, 0, HOLD_W, HOLD_H);
       if (holdType === null) return;
       holdCtx.globalAlpha = canHold ? 1 : 0.35;
-      drawMiniPiece(holdCtx, holdType, holdCanvas.width / 2, holdCanvas.height / 2);
+      drawMiniPiece(holdCtx, holdType, HOLD_W / 2, HOLD_H / 2);
       holdCtx.globalAlpha = 1;
     }
 
     // Draw the next pieces, one per slot, from top to bottom.
     function drawNext() {
-      nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
-      const slotHeight = nextCanvas.height / NEXT_COUNT;
+      nextCtx.clearRect(0, 0, NEXT_W, NEXT_H);
+      const slotHeight = NEXT_H / NEXT_COUNT;
       for (let i = 0; i < NEXT_COUNT; i++) {
-        drawMiniPiece(nextCtx, nextQueue[i], nextCanvas.width / 2, slotHeight * i + slotHeight / 2);
+        drawMiniPiece(nextCtx, nextQueue[i], NEXT_W / 2, slotHeight * i + slotHeight / 2);
       }
     }
 
-    // Update the SCORE, LEVEL, LINES and BEST numbers on the page.
+    // Update SCORE, LEVEL, LINES, BEST and the level progress bar.
     function updateStats() {
-      scoreText.textContent = String(score);
-      levelText.textContent = String(level);
-      linesText.textContent = String(lines);
-      bestText.textContent = String(best);
+      popIfChanged(scoreText, String(score));
+      popIfChanged(levelText, String(level));
+      popIfChanged(linesText, String(lines));
+      popIfChanged(bestText, String(best));
+      levelBar.style.width = `${(lines % 10) * 10}%`;
     }
 
-    // Show or hide the pause and game-over message.
-    function refreshOverlay() {
-      if (state === 'paused') {
-        showOverlay('PAUSED', 'Press P or Esc to resume', '');
-      } else if (state === 'over') {
-        showOverlay('GAME OVER', `Final score: ${score}`, 'Press R or tap Restart to play again');
-      } else {
-        overlayEl.classList.add('hidden');
+    // Set a stat's text, and animate it only when the value actually changed.
+    function popIfChanged(el, text) {
+      if (el.textContent !== text) {
+        popElement(el, text);
       }
     }
 
-    // Fill in the overlay text and show it.
-    function showOverlay(title, text, hint) {
+    // ============================================================
+    // 15. OVERLAY CARDS (title, pause, game over)
+    // ============================================================
+
+    // Show the card that matches the current state, or hide it while playing.
+    function refreshOverlay() {
+      if (state === 'ready') {
+        showOverlay('BLOCK BUSTER', 'Clear lines. Make a bust.', 'Press Enter or Space to start', 'Play', 'start');
+      } else if (state === 'paused') {
+        showOverlay('PAUSED', 'Take a breather.', 'Press P or Esc to resume', 'Resume', 'pause');
+      } else if (state === 'over' && overProgress >= VISIBLE_ROWS) {
+        const isNewBest = score > 0 && score > bestAtStart;
+        showOverlay(
+          'GAME OVER',
+          isNewBest ? `New best: ${score}` : `Final score: ${score}`,
+          'Press R or Enter to play again',
+          'Play again',
+          'restart'
+        );
+      } else {
+        hideOverlay();
+      }
+    }
+
+    // Fill in the card and show it.
+    function showOverlay(title, text, hint, buttonLabel, action) {
       overlayTitle.textContent = title;
       overlayText.textContent = text;
       overlayHint.textContent = hint;
+      overlayButton.textContent = buttonLabel;
+      overlayButton.hidden = false;
+      overlayAction = action;
       overlayEl.classList.remove('hidden');
     }
+
+    // Hide the card.
+    function hideOverlay() {
+      overlayEl.classList.add('hidden');
+      overlayButton.hidden = true;
+      overlayAction = null;
+    }
+
+    // ============================================================
+    // 16. MAIN LOOP
+    // ============================================================
 
     // Draw everything for the current frame.
     function render() {
@@ -1099,10 +1557,6 @@
       drawNext();
       updateStats();
     }
-
-    // ============================================================
-    // 14. MAIN LOOP
-    // ============================================================
 
     // Runs once per animation frame. Converts real elapsed time into dt seconds.
     function gameLoop(timestamp) {
@@ -1115,17 +1569,24 @@
 
       if (state === 'playing') {
         update(dt);
+        updateVisuals(dt);
+      }
+      if (state !== 'paused') {
+        updateEffects(dt);
       }
       render();
       requestAnimationFrame(gameLoop);
     }
 
     // ============================================================
-    // 15. START
+    // 17. START
     // ============================================================
 
     best = loadBest();
-    resetGame();
+    layoutCanvases();
+    window.addEventListener('resize', layoutCanvases);
+    prepareNewGame();
+    refreshOverlay();   // shows the title card; the board waits for the player
     requestAnimationFrame(gameLoop);
   </script>
 </body>
